@@ -6,9 +6,10 @@ PORT = 9876
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
 
-    data = input("enter your data: ")
-    s.sendall(data.encode())
+    while True:
+        data = input("enter your data: ")
+        s.sendall(data.encode())
 
-    data = s.recv(1024)
+        data = s.recv(1024)
 
-print(f"Received: {data.decode()}")
+        print(f"Received: {data.decode()}")

@@ -8,18 +8,28 @@ PORT = 9876
 client_dict = {}
 client_dict_lock = threading.Lock()
 
-def handle_commands():
-    while True:
-        command = input("Enter a command: ")
-        if command == "list":
-            with client_dict_lock:
-                if not client_dict:
-                    print("No clients are connected")
-                else:
-                    print("Clients connected:")
-                    for addr, info in client_dict.items():
-                        print(f"Client {addr} - Connected at: {info['time']}")
+# def handle_commands():
+#     while True:
+        # command = input("Enter a command: ")
+        # if command == "list":
+        #     with client_dict_lock:
+        #         if not client_dict:
+        #             print("No clients are connected")
+        #         else:
+        #             print("Clients connected:")
+        #             for addr, info in client_dict.items():
+        #                 print(f"Client {addr} - Connected at: {info['time']}")
             
+
+def print_client_dict(data):
+    with client_dict_lock:
+        if not client_dict:
+            print("No clients are connected")
+        else:
+            print("Clients connected:")
+            for addr, info in client_dict.items():
+                print(f"Client {addr} - Connected at: {info['time']}")
+
 
 def client_connection(conn, addr):
     with conn:
@@ -35,7 +45,11 @@ def client_connection(conn, addr):
             if not data:
                 break
 
-            print(f"data received from {addr} is {data.decode()}")
+            readible_data = data.decode()
+            if readible_data == "list":
+                print_client_dict(data.decode())
+
+            print(f"data received from {addr} is {readible_data}")
             conn.sendall(data)
 
 
@@ -46,12 +60,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     print(f"Server is running on: ({HOST}:{PORT})")
 
-    t = threading.Thread(target=handle_commands)
-    t.start()
+    # t = threading.Thread()
+    # t.start()
 
     while True:
         conn, addr = s.accept()
 
-        t = threading.Thread(target=client_connection, args=(conn, addr))
+        t = threading.Thread(target=client_connection, args=(conn, addr), daemon=True)
         t.start()
     
