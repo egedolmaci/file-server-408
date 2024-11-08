@@ -32,7 +32,6 @@ class Client():
                 sys.exit(1)
             elif response == "Good":
                 print(f"Connection succesfully established")
-                os.mkdir("./" + str(self.alias))
             
             print(response)
 
@@ -64,7 +63,7 @@ class Client():
 
             length_prefix = file_name_size.to_bytes(4, "big")
             file_name = file_name.encode()
-            file_name_packet =  length_prefix + file_name
+            file_name_packet = length_prefix + file_name
             self.sock.sendall(file_name_packet)
 
             file_size_len = len(str(file_size))

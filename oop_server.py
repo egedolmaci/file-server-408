@@ -1,3 +1,4 @@
+import re
 import socket
 import threading
 import time 
@@ -27,7 +28,18 @@ class Server:
         self.client_file_registry = {}
         self.client_file_registry_lock = threading.Lock()
 
+        self.connected_clients = []
+        self.connected_clients_lock = threading.Lock()
+
         self.permanent_file_registry_lock = threading.Lock()
+
+        self.save_files_path = "./files"
+
+        self.permanent_file_registry_load()
+
+        if not os.path.exists(self.save_files_path):
+            os.mkdir("./files")
+
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -49,24 +61,27 @@ class Server:
         alias = conn.recv(1024).decode()
         print(f"connected with {alias}")
 
-        with self.client_file_registry_lock:
-            if alias in self.client_file_registry:
+        with self.connected_clients_lock:
+            if alias in self.connected_clients:
                 print(f"Connection rejected for {alias} from {addr} since the username is already taken")
                 conn.send(b"Bad")
                 conn.close()
                 exit(1)
             else:
-                self.client_file_registry[alias] = set()
-                self.permanent_file_registry()
+                with self.client_file_registry_lock:
+                    if alias not in self.client_file_registry.keys():
+                        self.client_file_registry[alias] = set()
+                        self.permanent_file_registry_save()
 
-                with self.client_conn_history_lock:
-                    self.client_conn_history[addr] = {
-                        "connection": conn,
-                        "time": time.strftime("%H:%M:%S")
-                    }
+                    with self.client_conn_history_lock:
+                        self.client_conn_history[addr] = {
+                            "connection": conn,
+                            "time": time.strftime("%H:%M:%S")
+                        }
 
-                print(f"connected by: {addr} with username {alias}")
-                conn.send(b"Good")
+                    self.connected_clients.append(alias)
+                    print(f"connected by: {addr} with username {alias}")
+                    conn.send(b"Good")
 
         self.handle_command(alias, conn)
 
@@ -98,7 +113,7 @@ class Server:
             file_size = int(file_size.decode())
             print(f"file size: {file_size}")
 
-            with open(f"s_{file_name.decode()}", "wb") as f:
+            with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "wb") as f:
                 bytes_received = 0
                 while bytes_received < file_size:
                     data = conn.recv(4096)
@@ -108,8 +123,8 @@ class Server:
                     bytes_received += len(data)
 
             with self.client_file_registry_lock:
-                self.client_file_registry[alias].add(file_name.decode())
-            self.permanent_file_registry()
+                self.client_file_registry[alias].add(f"{alias}_{file_name.decode()}")
+            self.permanent_file_registry_save()
 
             print(f"File successfully created")
 
@@ -128,11 +143,11 @@ class Server:
                 print("No files are uploaded to the server yet")
             else:
                 print("Files Uploaded:")
-                for user, file  in self.client_file_registry.items():
+                for user, file in self.client_file_registry.items():
                     print(f"Client {user} - uploaded these files:")
                     print(file)
 
-    def permanent_file_registry(self):
+    def permanent_file_registry_save(self):
         with self.permanent_file_registry_lock:
             try:
                 with open("permanent-file-registry", 'w') as file:
@@ -141,6 +156,23 @@ class Server:
                 print(f"Successfully written")
             except Exception as e:
                 print(f"Error writing to file: {e}")
+
+    def permanent_file_registry_load(self):
+        with self.permanent_file_registry_lock:
+            try:
+                with open("permanent-file-registry", 'r') as file:
+                    for line in file:
+                        line = line.strip()
+                        if line:
+                            # Regular expression to match the key and the set
+                            match = re.match(r"(\w+): \{(.+)\}", line)
+                            if match:
+                                alias = match.group(1)  # Extract the key
+                                # Process the set items, removing extra spaces and quotes
+                                files = {item.strip().strip("'") for item in match.group(2).split(',')}
+                                self.client_file_registry[alias] = files
+            except Exception as e:
+                print(f"Error reading registry: {e}")
                 
     def client_file_download(self, alias, conn):
         length_prefix = conn.recv(4)
@@ -150,7 +182,7 @@ class Server:
         file_name = conn.recv(file_name_size)
         print(f"file Name: {file_name.decode()}")
 
-        with open(f"s_{file_name.decode()}", "rb") as file:
+        with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "rb") as file:
             file_size = os.path.getsize(file_name)
             
             file_size_len = len(str(file_size))
@@ -174,28 +206,6 @@ class Server:
 
             print(f"file successfully sent")
 
-
-
-        
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-            
 if __name__ == "__main__":
     my_server = Server()
     my_server.start()
