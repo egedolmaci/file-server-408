@@ -1,7 +1,7 @@
 import re
 import socket
 import threading
-import time 
+import time
 import os
 
 '''
@@ -11,13 +11,16 @@ check if directory exists before and do not create new if it already exists
 
 '''
 
-
-
 HOST = "127.0.0.1"
 PORT = 9876
 
+DOWNLOAD = "1"
+UPLOAD = "2"
+LIST = "3"
+
+
 class Server:
-    
+
     def __init__(self):
         self.host = HOST
         self.port = PORT
@@ -54,7 +57,7 @@ class Server:
 
                 t = threading.Thread(target=self.client_connection, args=(conn, addr))
                 t.start()
-    
+
     def client_connection(self, conn, addr):
         print(f"new connection {addr}")
 
@@ -83,19 +86,22 @@ class Server:
                     print(f"connected by: {addr} with username {alias}")
                     conn.send(b"Good")
 
-        self.handle_command(alias, conn)
+        try:
+            self.handle_command(alias, conn)
+        except:
+            self.connected_clients.remove(alias)
 
     def handle_command(self, alias, conn):
         while True:
             command = conn.recv(4).decode()
-            if command == "1":
+            if command == DOWNLOAD:
                 self.client_file_download(alias, conn)
-            elif command == "2":
-                self.handle_messages(alias, conn)
-            elif command == "3":
-                self.print_files()
+            elif command == UPLOAD:
+                self.client_file_upload(alias, conn)
+            elif command == LIST:
+                self.print_files(conn)
 
-    def handle_messages(self, alias, conn):
+    def client_file_upload(self, alias, conn):
 
             length_prefix = conn.recv(4)
             file_name_size = int.from_bytes(length_prefix, "big")
@@ -135,9 +141,10 @@ class Server:
             else:
                 print("Clients connected:")
                 for addr, info in self.client_conn_history.items():
-                    print(f"Client {addr} - Connected at: {info['time']}") 
-            
-    def print_files(self):
+                    print(f"Client {addr} - Connected at: {info['time']}")
+
+    def print_files(self,conn):
+        files_on_server = ""
         with self.client_file_registry_lock:
             if not self.client_file_registry:
                 print("No files are uploaded to the server yet")
@@ -145,7 +152,14 @@ class Server:
                 print("Files Uploaded:")
                 for user, file in self.client_file_registry.items():
                     print(f"Client {user} - uploaded these files:")
+                    files_on_server += f"Client {user} - uploaded these files:\n"
                     print(file)
+                    files_on_server += f"{file}\n"
+
+                files_on_server_length = len(files_on_server).to_bytes(4,"big")
+                conn.sendall(files_on_server_length)
+                conn.sendall(files_on_server.encode())
+
 
     def permanent_file_registry_save(self):
         with self.permanent_file_registry_lock:
@@ -173,7 +187,7 @@ class Server:
                                 self.client_file_registry[alias] = files
             except Exception as e:
                 print(f"Error reading registry: {e}")
-                
+
     def client_file_download(self, alias, conn):
         length_prefix = conn.recv(4)
         file_name_size = int.from_bytes(length_prefix, "big")
@@ -184,7 +198,7 @@ class Server:
 
         with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "rb") as file:
             file_size = os.path.getsize(file_name)
-            
+
             file_size_len = len(str(file_size))
             length_prefix = file_size_len.to_bytes(4, "big")
             file_size_b = str(file_size).encode()

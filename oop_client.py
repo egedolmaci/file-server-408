@@ -3,6 +3,10 @@ import socket
 import os
 import sys
 
+DOWNLOAD = "1"
+UPLOAD = "2"
+LIST = "3"
+
 HOST = "127.0.0.1"
 PORT = 9876
 
@@ -43,18 +47,27 @@ class Client():
     def handle_command(self):
         while True:
             command = input("Do you want to download(1), upload(2) or list of files(3)?")
-            if command == "1":
+            if command == DOWNLOAD:
                 self.sock.send("1".encode())
                 self.file_download()
                 # TODO: implement the download
-            elif command == "2":
+            elif command == UPLOAD:
                 print('merhaba')
                 self.sock.send("2".encode())
                 self.handle_connection()
-            elif command == "3":
+            elif command == LIST:
                 self.sock.send("3".encode())
+                self.handle_get_file_list()
                 pass
                 # TODO implement getting the list 
+
+    def handle_get_file_list(self):
+        files_info_length_bytes = self.sock.recv(4)
+        files_info_length = int.from_bytes(files_info_length_bytes,"big")
+
+        files_info = self.sock.recv(files_info_length)
+        files_info = files_info.decode()
+        print(files_info)
 
     
     def handle_connection(self):
@@ -112,7 +125,7 @@ class Client():
 
         length_prefix = file_name_size.to_bytes(4, "big")
         file_name_b = file_name.encode()
-        file_name_packet =  length_prefix + file_name_b
+        file_name_packet = length_prefix + file_name_b
         self.sock.sendall(file_name_packet)
 
         length_prefix = self.sock.recv(4)
