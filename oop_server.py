@@ -18,6 +18,7 @@ DOWNLOAD = "1"
 UPLOAD = "2"
 LIST = "3"
 DELETE = "4"
+NOTIFY = "5"
 
 
 class Server:
@@ -32,7 +33,7 @@ class Server:
         self.client_file_registry = {}
         self.client_file_registry_lock = threading.Lock()
 
-        self.connected_clients = []
+        self.connected_clients = {}
         self.connected_clients_lock = threading.Lock()
 
         self.permanent_file_registry_lock = threading.Lock()
@@ -43,7 +44,6 @@ class Server:
 
         if not os.path.exists(self.save_files_path):
             os.mkdir("./files")
-
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -66,7 +66,7 @@ class Server:
         print(f"connected with {alias}")
 
         with self.connected_clients_lock:
-            if alias in self.connected_clients:
+            if alias in self.connected_clients.keys():
                 print(f"Connection rejected for {alias} from {addr} since the username is already taken")
                 conn.send(b"Bad")
                 conn.close()
@@ -83,14 +83,15 @@ class Server:
                             "time": time.strftime("%H:%M:%S")
                         }
 
-                    self.connected_clients.append(alias)
+                    self.connected_clients[alias] = conn
                     print(f"connected by: {addr} with username {alias}")
                     conn.send(b"Good")
 
         try:
             self.handle_command(alias, conn)
-        except:
-            self.connected_clients.remove(alias)
+        except Exception as e:
+            print(f"Client disconnceted {e}")
+            self.connected_clients.pop(alias)
 
     def handle_command(self, alias, conn):
         while True:
@@ -100,11 +101,11 @@ class Server:
             elif command == UPLOAD:
                 self.client_file_upload(alias, conn)
             elif command == LIST:
-                self.print_files(conn)
+                self.client_file_list(conn)
             elif command == DELETE:
-                self.delete_file(alias,conn)
+                self.client_file_delete(alias, conn)
 
-    def delete_file(self,alias,conn):
+    def client_file_delete(self, alias, conn):
         length_prefix = conn.recv(4)
         file_name_size = int.from_bytes(length_prefix, "big")
         print(f"file_name_size: {file_name_size}")
@@ -115,15 +116,16 @@ class Server:
         file_name = file_name.decode()
         file_owner = file_name.split("_")[0]
 
-
         if alias == file_owner:
             os.remove(f"{self.save_files_path}/{file_name}")
             self.client_file_registry[alias].remove(file_name)
             self.permanent_file_registry_save()
+            conn.send(DELETE.encode())
             conn.send(b"Good")
 
         else:
             print("This is not the file owner")
+            conn.send(DELETE.encode())
             conn.send(b"Bad")
 
     def client_file_upload(self, alias, conn):
@@ -168,7 +170,7 @@ class Server:
                 for addr, info in self.client_conn_history.items():
                     print(f"Client {addr} - Connected at: {info['time']}")
 
-    def print_files(self,conn):
+    def client_file_list(self, conn):
         files_on_server = ""
         with self.client_file_registry_lock:
             if not self.client_file_registry:
@@ -181,10 +183,10 @@ class Server:
                     print(file)
                     files_on_server += f"{file}\n"
 
-                files_on_server_length = len(files_on_server).to_bytes(4,"big")
+                files_on_server_length = len(files_on_server).to_bytes(4, "big")
+                conn.sendall(LIST.encode())
                 conn.sendall(files_on_server_length)
                 conn.sendall(files_on_server.encode())
-
 
     def permanent_file_registry_save(self):
         with self.permanent_file_registry_lock:
@@ -222,16 +224,24 @@ class Server:
         file_name = file_name.decode()
         print(f"file Name: {file_name}")
 
+        file_owner = file_name.split("_")[0]
 
         try:
             with open(f"{self.save_files_path}/{file_name}", "rb") as file:
                 file_size = os.path.getsize(f"{self.save_files_path}/{file_name}")
+
+                file_name_len = len(str(file_name))
+                length_prefix = file_name_len.to_bytes(4, "big")
+                file_name_b = str(file_name).encode()
+                file_name_packet = length_prefix + file_name_b
 
                 file_size_len = len(str(file_size))
                 length_prefix = file_size_len.to_bytes(4, "big")
                 file_size_b = str(file_size).encode()
                 file_size_packet = length_prefix + file_size_b
 
+                conn.sendall(DOWNLOAD.encode())
+                conn.sendall(file_name_packet)
                 conn.sendall(file_size_packet)
 
                 print(f"file_size_size: {file_size_len}")
@@ -247,8 +257,20 @@ class Server:
                     bytes_sent += len(data)
 
                 print(f"file successfully sent")
-        except:
-            print("error")
+                if file_owner != alias:
+                    if file_owner in self.connected_clients.keys():
+                        downloader_name_len = len(str(alias))
+                        length_prefix = downloader_name_len.to_bytes(4, "big")
+                        downloader_name_b = str(alias).encode()
+                        downloader_package = length_prefix + downloader_name_b
+
+                        self.connected_clients[file_owner].sendall(NOTIFY.encode())
+                        self.connected_clients[file_owner].sendall(downloader_package)
+                        self.connected_clients[file_owner].sendall(file_name_packet)
+
+        except Exception as e:
+            print(f"error {e}")
+
 
 if __name__ == "__main__":
     my_server = Server()
