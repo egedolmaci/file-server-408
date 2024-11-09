@@ -54,7 +54,6 @@ class Client:
         while True:
             command = self.sock.recv(4)
             command = command.decode()
-            print(command)
 
             if command == DOWNLOAD:
                 self.handle_download_file_response()
@@ -208,7 +207,7 @@ class Client:
         file_name = self.sock.recv(file_name_size)
         file_name = file_name.decode()
 
-        print(f"{downloader_name} downloaded your file named {file_name}!")
+        print(f"\n{downloader_name} downloaded your file named {file_name}!")
 
 
 if __name__ == "__main__":

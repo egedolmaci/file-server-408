@@ -45,6 +45,13 @@ class Server:
         if not os.path.exists(self.save_files_path):
             os.mkdir("./files")
 
+        # Check if 'test.txt' exists
+        if not os.path.exists("permanent-file-registry"):
+            # Create the file if it doesn't exist
+            with open("permanent-file-registry", "w") as file:
+                pass  # Creates an empty file
+            print("permanent-file-registry created.")
+
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
