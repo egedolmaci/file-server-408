@@ -17,6 +17,7 @@ PORT = 9876
 DOWNLOAD = "1"
 UPLOAD = "2"
 LIST = "3"
+DELETE = "4"
 
 
 class Server:
@@ -100,39 +101,63 @@ class Server:
                 self.client_file_upload(alias, conn)
             elif command == LIST:
                 self.print_files(conn)
+            elif command == DELETE:
+                self.delete_file(alias,conn)
+
+    def delete_file(self,alias,conn):
+        length_prefix = conn.recv(4)
+        file_name_size = int.from_bytes(length_prefix, "big")
+        print(f"file_name_size: {file_name_size}")
+
+        file_name = conn.recv(file_name_size)
+        print(f"file Name: {file_name.decode()}")
+
+        file_name = file_name.decode()
+        file_owner = file_name.split("_")[0]
+
+
+        if alias == file_owner:
+            os.remove(f"{self.save_files_path}/{file_name}")
+            self.client_file_registry[alias].remove(file_name)
+            self.permanent_file_registry_save()
+            conn.send(b"Good")
+
+        else:
+            print("This is not the file owner")
+            conn.send(b"Bad")
 
     def client_file_upload(self, alias, conn):
 
-            length_prefix = conn.recv(4)
-            file_name_size = int.from_bytes(length_prefix, "big")
-            print(f"file_name_size: {file_name_size}")
+        length_prefix = conn.recv(4)
+        file_name_size = int.from_bytes(length_prefix, "big")
+        print(f"file_name_size: {file_name_size}")
 
-            file_name = conn.recv(file_name_size)
-            print(f"file Name: {file_name.decode()}")
+        file_name = conn.recv(file_name_size)
+        print(f"file Name: {file_name.decode()}")
 
-            length_prefix = conn.recv(4)
-            file_size_size = int.from_bytes(length_prefix, "big")
+        length_prefix = conn.recv(4)
+        file_size_size = int.from_bytes(length_prefix, "big")
 
-            print(f"file_size_size: {file_size_size}")
+        print(f"file_size_size: {file_size_size}")
 
-            file_size = conn.recv(file_size_size)
-            file_size = int(file_size.decode())
-            print(f"file size: {file_size}")
+        file_size = conn.recv(file_size_size)
+        file_size = int(file_size.decode())
+        print(f"file size: {file_size}")
 
-            with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "wb") as f:
-                bytes_received = 0
-                while bytes_received < file_size:
-                    data = conn.recv(4096)
-                    if not data:
-                        break
-                    f.write(data)
-                    bytes_received += len(data)
+        with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "wb") as f:
+            bytes_received = 0
+            while bytes_received < file_size:
+                data = conn.recv(4096)
+                if not data:
+                    break
+                f.write(data)
+                bytes_received += len(data)
 
-            with self.client_file_registry_lock:
-                self.client_file_registry[alias].add(f"{alias}_{file_name.decode()}")
-            self.permanent_file_registry_save()
+        with self.client_file_registry_lock:
+            self.client_file_registry[alias].add(f"{alias}_{file_name.decode()}")
+        self.permanent_file_registry_save()
 
-            print(f"File successfully created")
+        print(f"File successfully created")
 
     def print_history(self):
         with self.client_conn_history_lock:
@@ -196,6 +221,7 @@ class Server:
         file_name = conn.recv(file_name_size)
         file_name = file_name.decode()
         print(f"file Name: {file_name}")
+
 
         try:
             with open(f"{self.save_files_path}/{file_name}", "rb") as file:

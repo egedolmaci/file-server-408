@@ -6,6 +6,7 @@ import sys
 DOWNLOAD = "1"
 UPLOAD = "2"
 LIST = "3"
+DELETE = "4"
 
 HOST = "127.0.0.1"
 PORT = 9876
@@ -46,11 +47,10 @@ class Client():
 
     def handle_command(self):
         while True:
-            command = input("Do you want to download(1), upload(2) or list of files(3)?")
+            command = input("Do you want to download(1), upload(2), list of files(3) or delete file(4)?")
             if command == DOWNLOAD:
                 self.sock.send("1".encode())
                 self.file_download()
-                # TODO: implement the download
             elif command == UPLOAD:
                 print('merhaba')
                 self.sock.send("2".encode())
@@ -58,8 +58,28 @@ class Client():
             elif command == LIST:
                 self.sock.send("3".encode())
                 self.handle_get_file_list()
-                pass
-                # TODO implement getting the list 
+            elif command == DELETE:
+                self.sock.send("4".encode())
+                print("sent")
+                self.handle_delete_file()
+
+    def handle_delete_file(self):
+        file_name = input("Please enter the file you want to delete: ")
+        file_name_size = len(file_name)
+
+        length_prefix = file_name_size.to_bytes(4, "big")
+        file_name_b = file_name.encode()
+        file_name_packet = length_prefix + file_name_b
+        self.sock.sendall(file_name_packet)
+
+        response = self.sock.recv(1024)
+        response = response.decode()
+
+
+        if response == "Good":
+            print("File deleted successfully!")
+        else:
+            print("File could not be deleted you don't own this file!")
 
     def handle_get_file_list(self):
         files_info_length_bytes = self.sock.recv(4)
