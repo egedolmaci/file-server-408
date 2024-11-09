@@ -137,7 +137,7 @@ class Client():
         file_size = int(file_size.decode())
         print(f"file size: {file_size}")
 
-        with open(f"{self.alias}_{file_name}", "wb") as f:
+        with open(f"{file_name}", "wb") as f:
                 bytes_received = 0
                 while bytes_received < file_size:
                     data = self.sock.recv(4096)

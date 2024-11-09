@@ -194,31 +194,35 @@ class Server:
         print(f"file_name_size: {file_name_size}")
 
         file_name = conn.recv(file_name_size)
-        print(f"file Name: {file_name.decode()}")
+        file_name = file_name.decode()
+        print(f"file Name: {file_name}")
 
-        with open(f"{self.save_files_path}/{alias}_{file_name.decode()}", "rb") as file:
-            file_size = os.path.getsize(file_name)
+        try:
+            with open(f"{self.save_files_path}/{file_name}", "rb") as file:
+                file_size = os.path.getsize(f"{self.save_files_path}/{file_name}")
 
-            file_size_len = len(str(file_size))
-            length_prefix = file_size_len.to_bytes(4, "big")
-            file_size_b = str(file_size).encode()
-            file_size_packet = length_prefix + file_size_b
-            conn.sendall(file_size_packet)
+                file_size_len = len(str(file_size))
+                length_prefix = file_size_len.to_bytes(4, "big")
+                file_size_b = str(file_size).encode()
+                file_size_packet = length_prefix + file_size_b
 
-            print(f"file_size_size: {file_size_len}")
-            print(f"file size = {str(file_size)}")
+                conn.sendall(file_size_packet)
 
-            bytes_sent = 0
-            while bytes_sent < file_size:
-                data = file.read(4096)
-                if not data:
-                    print(f"bytes sent: {bytes_sent}")
-                    break
-                conn.sendall(data)
-                bytes_sent += len(data)
+                print(f"file_size_size: {file_size_len}")
+                print(f"file size = {str(file_size)}")
 
+                bytes_sent = 0
+                while bytes_sent < file_size:
+                    data = file.read(4096)
+                    if not data:
+                        print(f"bytes sent: {bytes_sent}")
+                        break
+                    conn.sendall(data)
+                    bytes_sent += len(data)
 
-            print(f"file successfully sent")
+                print(f"file successfully sent")
+        except:
+            print("error")
 
 if __name__ == "__main__":
     my_server = Server()
