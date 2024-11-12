@@ -7,6 +7,8 @@ from parser import *
 
 '''
 The problems to be fixed:
+- We need to add a mechanism to close all the running threads, and dependent threads with a function to 
+call this on event user closes the server console window.
 
 '''
 
@@ -33,8 +35,11 @@ class Server:
 
         self.save_files_path = "./files"
 
+        self.log_to_console = None
+
+    def start(self):
         if not os.path.exists(self.save_files_path):
-            os.mkdir("./files")
+            os.mkdir(self.save_files_path)
 
         # Check if 'test.txt' exists
         if not os.path.exists("permanent-file-registry"):
@@ -45,13 +50,13 @@ class Server:
 
         self.permanent_file_registry_load()
 
-    def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((HOST, PORT))
             s.listen()
 
             print(f"Server is running on: ({HOST}:{PORT})")
+            self.log_to_console(f"Server is running on: ({HOST}:{PORT})")
 
             while True:
                 conn, addr = s.accept()
@@ -61,9 +66,11 @@ class Server:
 
     def client_connection(self, conn, addr):
         print(f"new connection {addr}")
+        self.log_to_console(f"new connection {addr}")
 
         alias = conn.recv(1024).decode()
         print(f"connected with {alias}")
+        self.log_to_console(f"connected with {alias}")
 
         with self.connected_clients_lock:
             if alias in self.connected_clients.keys():
@@ -235,8 +242,3 @@ class Server:
                                 self.client_file_registry[alias] = files
             except Exception as e:
                 print(f"Error reading registry: {e}")
-
-
-if __name__ == "__main__":
-    my_server = Server()
-    my_server.start()
