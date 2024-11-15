@@ -61,7 +61,7 @@ class Server:
             while True:
                 conn, addr = s.accept()
 
-                t = threading.Thread(target=self.client_connection, args=(conn, addr))
+                t = threading.Thread(target=self.client_connection, args=(conn, addr), daemon=True)
                 t.start()
 
     def client_connection(self, conn, addr):

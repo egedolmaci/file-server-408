@@ -1,3 +1,4 @@
+import sys
 import threading
 
 from oop_server import Server
@@ -6,30 +7,24 @@ from tkinter import filedialog, messagebox
 
 if __name__ == "__main__":
     server = Server()
-    server_thread: threading.Thread
 
     # Function to handle connect button click
     def start_server():
-        global server_thread
         ip = ip_entry.get()
         port = port_entry.get()
         directory = dir_entry.get()
 
         if ip and port and directory:
-            messagebox.showinfo("Connection", f"Connecting to {ip}:{port}\nDirectory: {directory}")
+            messagebox.showinfo("Server", f"Starting server at {ip}:{port}\nDirectory: {directory}")
             # Close the main window and open the console window
             root.withdraw()
             open_console_window()
             # Set file dir of server
             server.save_files_path = dir_entry.get()
-            server_thread = threading.Thread(target=server.start, args=())
+            server_thread = threading.Thread(target=server.start, args=(), daemon=True)
             server_thread.start()
         else:
             messagebox.showwarning("Input Error", "Please fill in all fields.")
-
-    # TODO Signal all threads in the server to stop, and stop the server thread as well join all of them
-    def stop_server():
-        pass
 
     # Function to open directory dialog
     def select_directory():
@@ -37,6 +32,10 @@ if __name__ == "__main__":
         if directory:
             dir_entry.delete(0, tk.END)
             dir_entry.insert(0, directory)
+
+    def on_window_close():
+        root.destroy()
+        sys.exit(0)
 
 
     # Function to open a new console window
@@ -47,6 +46,9 @@ if __name__ == "__main__":
         # Listbox to serve as the console log
         console_log = tk.Listbox(console_window, width=80, height=20)
         console_log.pack(padx=10, pady=10)
+
+        # Bind the close event to the function
+        console_window.protocol("WM_DELETE_WINDOW", on_window_close)
 
         # Button to simulate adding log messages to the console
         def add_log_message(message):
@@ -83,8 +85,8 @@ if __name__ == "__main__":
     dir_button.grid(row=2, column=2, padx=10, pady=10)
 
     # Connect Button
-    connect_button = tk.Button(root, text="Connect", command=start_server)
-    connect_button.grid(row=3, column=0, columnspan=3, pady=20)
+    start_button = tk.Button(root, text="Start", command=start_server)
+    start_button.grid(row=3, column=0, columnspan=3, pady=20)
 
 
     # Run the application
