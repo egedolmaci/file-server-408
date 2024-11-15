@@ -69,7 +69,7 @@ class ServerGUI(tk.Tk):
 
         # Listbox to serve as the console log
         self.console_log = tk.Listbox(console_window, width=80, height=20)
-        self.console_log.pack(padx=10, pady=10)
+        self.console_log.grid(row=0, column=0, padx=10, pady=10)
 
         # Bind the close event to the function
         console_window.protocol("WM_DELETE_WINDOW", self.on_window_close)
