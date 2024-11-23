@@ -1,8 +1,11 @@
+import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from oop_client import Client
+from parser import *
 
 
-class FileServerClient(tk.Tk):
+class ClientGUI(tk.Tk):
     def __init__(self):
         super().__init__()
 
@@ -13,6 +16,7 @@ class FileServerClient(tk.Tk):
         self.retrieve_button = None
         self.user_interface = None
         self.file_list = None
+        self.client = None
 
         self.title("Connection Interface")
 
@@ -31,8 +35,8 @@ class FileServerClient(tk.Tk):
         # Directory Label, Entry, and Button
         self.dir_label = tk.Label(self, text="User Name:")
         self.dir_label.grid(row=2, column=0, padx=10, pady=10)
-        self.dir_entry = tk.Entry(self)
-        self.dir_entry.grid(row=2, column=1, padx=10, pady=10)
+        self.user_name = tk.Entry(self)
+        self.user_name.grid(row=2, column=1, padx=10, pady=10)
 
         # Connect Button
         self.connect_button = tk.Button(self, text="Connect", command=self.start_client)
@@ -42,12 +46,17 @@ class FileServerClient(tk.Tk):
 
         ip = self.ip_entry.get()
         port = self.port_entry.get()
-        user_name = self.dir_entry.get()
+        user_name = self.user_name.get()
+
+        self.client = Client()
 
         if ip and port and user_name:
             messagebox.showinfo("Server", f"Connecting to {ip}:{port}\nWith name: {user_name}")
             self.withdraw()  # Hide the current window
+            self.client.alias = user_name
             self.open_client_user_interface()  # Open the new user interface window
+            server_thread = threading.Thread(target=self.client.connect, args=(), daemon=True)
+            server_thread.start()
 
         else:
             messagebox.showwarning("Input Error", "Please fill in all fields.")
@@ -96,6 +105,7 @@ class FileServerClient(tk.Tk):
         self.log_message("Retrieving server data...")
         # Simulate data retrieval
         self.log_message("Server data retrieved successfully.")
+        self.client.handle_command(LIST)
 
     def upload_file(self):
         file_path = filedialog.askopenfilename()
@@ -124,5 +134,5 @@ class FileServerClient(tk.Tk):
 
 
 if __name__ == "__main__":
-    app = FileServerClient()
+    app = ClientGUI()
     app.mainloop()

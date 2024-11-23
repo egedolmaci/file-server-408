@@ -21,7 +21,6 @@ class Client:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
 
-            self.alias = input("What is the username: ")
             self.sock.send(self.alias.encode())
 
             response = receive_acknowledgement(self.sock)
@@ -56,17 +55,15 @@ class Client:
             elif command == NOTIFY:
                 self.handle_notify_response()
 
-    def handle_command(self):
-        while True:
-            command = int(input("Do you want to download(1), upload(2), list of files(3) or delete file(4)?"))
-            if command == DOWNLOAD:
-                self.send_download_file_request()
-            elif command == UPLOAD:
-                self.send_upload_file_request()
-            elif command == LIST:
-                self.send_get_file_list_request()
-            elif command == DELETE:
-                self.send_delete_file_request()
+    def handle_command(self, command):
+        if command == DOWNLOAD:
+            self.send_download_file_request()
+        elif command == UPLOAD:
+            self.send_upload_file_request()
+        elif command == LIST:
+            self.send_get_file_list_request()
+        elif command == DELETE:
+            self.send_delete_file_request()
 
     def send_delete_file_request(self):
         send_command(self.sock, DELETE)
