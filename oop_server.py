@@ -113,10 +113,12 @@ class Server:
                 self.client_file_delete(alias, conn)
 
     def client_file_delete(self, alias, conn):
+        print(alias)
         file_name = receive_package(conn)
         file_owner = file_name.split("_")[0]
 
         if alias == file_owner:
+            print(self.save_files_path)
             os.remove(f"{self.save_files_path}/{file_name}")
             self.client_file_registry[alias].remove(file_name)
             self.permanent_file_registry_save()

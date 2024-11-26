@@ -1,3 +1,4 @@
+import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -49,6 +50,7 @@ class ClientGUI(tk.Tk):
         user_name = self.user_name.get()
 
         self.client = Client()
+        self.client.ui_update_callback = self.ui_update_callback
 
         if ip and port and user_name:
             messagebox.showinfo("Server", f"Connecting to {ip}:{port}\nWith name: {user_name}")
@@ -100,24 +102,34 @@ class ClientGUI(tk.Tk):
         self.console_text = tk.Text(self.user_interface, height=20, width=80)
         self.console_text.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
 
+        # Bind the close event to the function
+        self.user_interface.protocol("WM_DELETE_WINDOW", self.on_window_close)
+
+    def on_window_close(self):
+        self.destroy()
+        sys.exit(0)
+
     def retrieve_server_data(self):
         # Code to retrieve and display server file data
         self.log_message("Retrieving server data...")
         # Simulate data retrieval
         self.log_message("Server data retrieved successfully.")
-        self.client.handle_command(LIST)
+        self.client.handle_command(LIST, None)
 
     def upload_file(self):
         file_path = filedialog.askopenfilename()
         if file_path:
             self.log_message(f"Uploading file: {file_path}")
             # Code to upload the selected file to the server
+            self.client.handle_command(UPLOAD, file_path)
             self.log_message("File uploaded successfully.")
 
     def download_file(self):
         selected_item = self.file_list.focus()
         if selected_item:
             self.log_message(f"Downloading file: {self.file_list.item(selected_item)['text']}")
+
+            self.client.handle_command(DOWNLOAD, self.file_list.item(selected_item)['values'][0]+"_"+self.file_list.item(selected_item)['text'])
             # Code to download the selected file from the server
             self.log_message("File downloaded successfully.")
 
@@ -125,12 +137,21 @@ class ClientGUI(tk.Tk):
         selected_item = self.file_list.focus()
         if selected_item:
             self.log_message(f"Deleting file: {self.file_list.item(selected_item)['text']}")
+            self.client.handle_command(DELETE, self.file_list.item(selected_item)['values'][0] + "_"
+                                       + self.file_list.item(selected_item)['text'])
             # Code to delete the selected file from the server
             self.log_message("File deleted successfully.")
 
     def log_message(self, message):
         self.console_text.insert(tk.END, f"{message}\n")
         self.console_text.see(tk.END)
+
+    def ui_update_callback(self, command, data: dict):
+        if command == LIST:
+            self.file_list.delete(*self.file_list.get_children())
+            for key in data.keys():
+                for value in data[key]:
+                    self.file_list.insert("", "end", text=value, values=(key,))
 
 
 if __name__ == "__main__":

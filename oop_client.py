@@ -1,3 +1,4 @@
+import re
 import socket
 import os
 import sys
@@ -15,6 +16,7 @@ class Client:
         self.port = PORT
         self.alias = None
         self.sock = None
+        self.ui_update_callback = None
 
     def connect(self):
         try:
@@ -38,8 +40,6 @@ class Client:
             t = threading.Thread(target=self.listen_server, args=())
             t.start()
 
-            self.handle_command()
-
         except Exception as e:
             print(f"Error: {e}")
 
@@ -55,19 +55,18 @@ class Client:
             elif command == NOTIFY:
                 self.handle_notify_response()
 
-    def handle_command(self, command):
+    def handle_command(self, command, data):
         if command == DOWNLOAD:
-            self.send_download_file_request()
+            self.send_download_file_request(data)
         elif command == UPLOAD:
-            self.send_upload_file_request()
+            self.send_upload_file_request(data)
         elif command == LIST:
             self.send_get_file_list_request()
         elif command == DELETE:
-            self.send_delete_file_request()
+            self.send_delete_file_request(data)
 
-    def send_delete_file_request(self):
+    def send_delete_file_request(self, file_name):
         send_command(self.sock, DELETE)
-        file_name = input("Please enter the file you want to delete: ")
         send_package(self.sock, len(file_name), file_name)
 
     def handle_delete_file_response(self):
@@ -84,12 +83,13 @@ class Client:
     def handle_get_file_list_response(self):
         files_info = receive_package(self.sock)
         print("\n")
-        print(files_info)
+        permanent_file_registry = self.permanent_file_registry_load(files_info)
+        self.ui_update_callback(LIST, permanent_file_registry)
 
-    def send_upload_file_request(self):
+    def send_upload_file_request(self,file_path):
         send_command(self.sock, UPLOAD)
         try:
-            file, file_name, file_size, file_name_size = self.handle_upload_file_request()
+            file, file_name, file_size, file_name_size = self.handle_upload_file_request(file_path)
 
             send_package(self.sock, file_name_size, file_name)
 
@@ -106,9 +106,8 @@ class Client:
         except Exception as e:
             print(f"exception {e}")
 
-    def handle_upload_file_request(self):
+    def handle_upload_file_request(self, file_path):
         try:
-            file_path = input("Please enter the file you want to send: ")
 
             if not os.path.exists(file_path):
                 raise FileNotFoundError("File does not exist")
@@ -124,13 +123,11 @@ class Client:
 
             return file, file_name, file_size, file_name_size
         except Exception as e:
-            print("merhaba")
             print(f"Error: {e}")
             return None
 
-    def send_download_file_request(self):
+    def send_download_file_request(self, file_name):
         send_command(self.sock, DOWNLOAD)
-        file_name = input("Please enter the file you want to download: ")
 
         file_name_size = len(file_name)
         send_package(self.sock, file_name_size, file_name)
@@ -138,6 +135,7 @@ class Client:
     def handle_download_file_response(self):
 
         file_name = receive_package(self.sock)
+        file_name = file_name.split("_")[1]
         file_size = int(receive_package(self.sock))
 
         with open(f"{file_name}", "wb") as f:
@@ -157,6 +155,35 @@ class Client:
         file_name = receive_package(self.sock)
 
         print(f"\n{downloader_name} downloaded your file named {file_name}!")
+
+    def permanent_file_registry_load(self, data):
+        print(data)
+        try:
+            # Split the input into lines
+            lines = data.strip().splitlines()
+
+            result = {}
+            current_client = None
+
+            for line in lines:
+                line = line.strip()
+                if line.startswith("Client"):
+                    # Extract the client's name (e.g., 'ece' or 'ege')
+                    current_client = line.split()[1]
+                    result[current_client] = []  # Initialize an empty list for this client
+                elif line.startswith("{"):
+                    # Extract filenames from the set notation
+                    files = line.strip("{}").split(", ")
+                    for file in files:
+                        file = file.strip("'")  # Remove surrounding quotes
+                        # Extract the meaningful part after the last underscore
+                        meaningful_part = file.split('_')[-1]
+                        if meaningful_part not in result[current_client]:
+                            result[current_client].append(meaningful_part)
+
+            return result
+        except Exception as e:
+            print(f"Error reading registry: {e}")
 
 
 if __name__ == "__main__":
