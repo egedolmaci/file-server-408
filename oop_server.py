@@ -136,6 +136,7 @@ class Server:
         file_size = int(receive_package(conn))
         print(f"file size: {file_size}")
 
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((HOST, PORT+1))
@@ -201,35 +202,43 @@ class Server:
         file_owner = file_name.split("_")[0]
 
         try:
-            with open(f"{self.save_files_path}/{file_name}", "rb") as file:
-                file_size = os.path.getsize(f"{self.save_files_path}/{file_name}")
-                file_name_len = len(str(file_name))
-                file_size_len = len(str(file_size))
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                with open(f"{self.save_files_path}/{file_name}", "rb") as file:
+                    file_size = os.path.getsize(f"{self.save_files_path}/{file_name}")
+                    file_name_len = len(str(file_name))
+                    file_size_len = len(str(file_size))
 
-                send_command(conn, DOWNLOAD)
-                send_package(conn, file_name_len, str(file_name))
-                send_package(conn, file_size_len, str(file_size))
 
-                print(f"file_size_size: {file_size_len}")
-                print(f"file size = {str(file_size)}")
+                    s.bind((HOST, PORT+1))
+                    s.listen()
 
-                bytes_sent = 0
-                while bytes_sent < file_size:
-                    data = file.read(4096)
-                    if not data:
-                        print(f"bytes sent: {bytes_sent}")
-                        break
-                    conn.sendall(data)
-                    bytes_sent += len(data)
+                    send_command(conn, DOWNLOAD)
+                    send_package(conn, file_name_len, str(file_name))
+                    send_package(conn, file_size_len, str(file_size))
 
-                print(f"file successfully sent")
-                if file_owner != alias:
-                    if file_owner in self.connected_clients.keys():
-                        downloader_name_len = len(str(alias))
+                    conn_data_transfer, addr = s.accept()
 
-                        send_command(self.connected_clients[file_owner], NOTIFY)
-                        send_package(self.connected_clients[file_owner], downloader_name_len, str(alias))
-                        send_package(self.connected_clients[file_owner], file_name_len, str(file_name))
+                    print(f"file_size_size: {file_size_len}")
+                    print(f"file size = {str(file_size)}")
+
+                    bytes_sent = 0
+                    while bytes_sent < file_size:
+                        data = file.read(4096)
+                        if not data:
+                            print(f"bytes sent: {bytes_sent}")
+                            break
+                        conn_data_transfer.sendall(data)
+                        bytes_sent += len(data)
+
+                    print(f"file successfully sent")
+                    if file_owner != alias:
+                        if file_owner in self.connected_clients.keys():
+                            downloader_name_len = len(str(alias))
+
+                            send_command(self.connected_clients[file_owner], NOTIFY)
+                            send_package(self.connected_clients[file_owner], downloader_name_len, str(alias))
+                            send_package(self.connected_clients[file_owner], file_name_len, str(file_name))
 
         except Exception as e:
             print(f"error {e}")

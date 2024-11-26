@@ -24,6 +24,7 @@ class Client:
     def connect(self):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.connect((self.host, self.port))
 
             self.sock.send(self.alias.encode())
@@ -109,6 +110,7 @@ class Client:
     def handle_upload_file_response(self):
         try:
             self.sock_data_transfer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock_data_transfer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
             self.sock_data_transfer.connect((self.host, self.port+1))
 
             bytes_sent = 0
@@ -120,6 +122,8 @@ class Client:
                 bytes_sent += len(data)
         except Exception as e:
             print(e)
+        finally:
+            self.sock_data_transfer.close()
 
 
     def file_util(self, file_path):
@@ -149,6 +153,10 @@ class Client:
 
     def handle_download_file_response(self):
 
+        self.sock_data_transfer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock_data_transfer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
+        self.sock_data_transfer.connect((self.host, self.port+1))
+
         file_name = receive_package(self.sock)
         file_name = file_name.split("_")[1]
         file_size = int(receive_package(self.sock))
@@ -156,13 +164,14 @@ class Client:
         with open(f"{file_name}", "wb") as f:
             bytes_received = 0
             while bytes_received < file_size:
-                data = self.sock.recv(4096)
+                data = self.sock_data_transfer.recv(4096)
                 if not data:
                     break
                 f.write(data)
                 bytes_received += len(data)
 
         print(f"file completely downloaded")
+        self.sock_data_transfer.close()
 
     def handle_notify_response(self):
 
