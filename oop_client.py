@@ -20,6 +20,7 @@ class Client:
         self.sock_data_transfer = None
         self.file = None
         self.file_size = 0
+        self.open_client_user_interface = None
 
     def connect(self):
         try:
@@ -34,9 +35,11 @@ class Client:
             if response == NOK:
                 print(f"Username already taken: {self.alias}")
                 self.sock.close()
+                self.ui_update_callback("ERROR", "USERNAME_TAKEN")
                 sys.exit(1)
             elif response == OK:
                 print(f"Connection successfully established")
+                self.open_client_user_interface()
 
             print(response)
 
@@ -46,20 +49,26 @@ class Client:
 
         except Exception as e:
             print(f"Error: {e}")
+            self.ui_update_callback("ERROR", "CONNECTION_ERROR")
 
     def listen_server(self):
         while True:
-            command = receive_command(self.sock)
-            if command == DOWNLOAD:
-                self.handle_download_file_response()
-            elif command == UPLOAD:
-                self.handle_upload_file_response()
-            elif command == LIST:
-                self.handle_get_file_list_response()
-            elif command == DELETE:
-                self.handle_delete_file_response()
-            elif command == NOTIFY:
-                self.handle_notify_response()
+            try:
+                command = receive_command(self.sock)
+                if command == DOWNLOAD:
+                    self.handle_download_file_response()
+                elif command == UPLOAD:
+                    self.handle_upload_file_response()
+                elif command == LIST:
+                    self.handle_get_file_list_response()
+                elif command == DELETE:
+                    self.handle_delete_file_response()
+                elif command == NOTIFY:
+                    self.handle_notify_response()
+            except Exception as e:
+                self.ui_update_callback("LOG", "Server connection lost!")
+                self.ui_update_callback("ERROR", "CONNECTION_LOST")
+                break
 
     def handle_command(self, command, data):
         if command == DOWNLOAD:
@@ -79,9 +88,9 @@ class Client:
         response = receive_acknowledgement(self.sock)
 
         if response == OK:
-            print("File deleted successfully!")
+            self.ui_update_callback(DELETE, True)
         elif response == NOK:
-            print("File could not be deleted you don't own this file!")
+            self.ui_update_callback(DELETE, False)
 
     def send_get_file_list_request(self):
         send_command(self.sock, LIST)
@@ -124,6 +133,7 @@ class Client:
             print(e)
         finally:
             self.sock_data_transfer.close()
+            self.send_get_file_list_request()
 
 
     def file_util(self, file_path):
@@ -179,6 +189,7 @@ class Client:
         file_name = receive_package(self.sock)
 
         print(f"\n{downloader_name} downloaded your file named {file_name}!")
+        self.ui_update_callback("LOG", f"\n{downloader_name} downloaded your file named {file_name.split('_'[1])}!")
 
     def permanent_file_registry_load(self, data):
         print(data)

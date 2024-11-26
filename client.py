@@ -56,9 +56,9 @@ class ClientGUI(tk.Tk):
             messagebox.showinfo("Server", f"Connecting to {ip}:{port}\nWith name: {user_name}")
             self.withdraw()  # Hide the current window
             self.client.alias = user_name
-            self.open_client_user_interface()  # Open the new user interface window
             server_thread = threading.Thread(target=self.client.connect, args=(), daemon=True)
             server_thread.start()
+            self.client.open_client_user_interface = self.open_client_user_interface
 
         else:
             messagebox.showwarning("Input Error", "Please fill in all fields.")
@@ -129,29 +129,56 @@ class ClientGUI(tk.Tk):
         if selected_item:
             self.log_message(f"Downloading file: {self.file_list.item(selected_item)['text']}")
 
-            self.client.handle_command(DOWNLOAD, self.file_list.item(selected_item)['values'][0]+"_"+self.file_list.item(selected_item)['text'])
+            self.client.handle_command(DOWNLOAD, self.file_list.item(selected_item)['values'][0] + "_" +
+                                       self.file_list.item(selected_item)['text'])
             # Code to download the selected file from the server
             self.log_message("File downloaded successfully.")
 
     def delete_file(self):
         selected_item = self.file_list.focus()
         if selected_item:
-            self.log_message(f"Deleting file: {self.file_list.item(selected_item)['text']}")
+            self.log_message(f"Trying to delete file: {self.file_list.item(selected_item)['text']}")
             self.client.handle_command(DELETE, self.file_list.item(selected_item)['values'][0] + "_"
                                        + self.file_list.item(selected_item)['text'])
-            # Code to delete the selected file from the server
-            self.log_message("File deleted successfully.")
+        else:
+            self.log_message("Please select a file to delete!")
 
     def log_message(self, message):
         self.console_text.insert(tk.END, f"{message}\n")
         self.console_text.see(tk.END)
 
-    def ui_update_callback(self, command, data: dict):
+    def ui_update_callback(self, command, data):
         if command == LIST:
             self.file_list.delete(*self.file_list.get_children())
             for key in data.keys():
                 for value in data[key]:
                     self.file_list.insert("", "end", text=value, values=(key,))
+
+        if command == DELETE:
+            if data:
+                self.log_message("File deleted successfully.")
+                self.client.send_get_file_list_request()
+            else:
+                self.log_message("File could not be deleted you don't own this file!")
+
+        if command == "LOG":
+            self.log_message(data)
+
+        if command == "ERROR":
+            if data == "USERNAME_TAKEN":
+                messagebox.showwarning("Error", "This user is already connected!")
+                self.destroy()
+                sys.exit(0)
+
+            if data == "CONNECTION_LOST":
+                messagebox.showwarning("Error", "Server connection has been lost!")
+                self.destroy()
+                sys.exit(0)
+
+            if data == "CONNECTION_ERROR":
+                messagebox.showwarning("Error", "Could not connect to the server!")
+                self.destroy()
+                sys.exit(0)
 
 
 if __name__ == "__main__":

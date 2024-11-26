@@ -66,15 +66,16 @@ class Server:
 
     def client_connection(self, conn, addr):
         print(f"new connection {addr}")
-        self.log_to_console(f"new connection {addr}")
+        self.log_to_console(f"New connection {addr}")
 
         alias = conn.recv(1024).decode()
         print(f"connected with {alias}")
-        self.log_to_console(f"connected with {alias}")
+        self.log_to_console(f"Client trying to connect with name: {alias}")
 
         with self.connected_clients_lock:
             if alias in self.connected_clients.keys():
                 print(f"Connection rejected for {alias} from {addr} since the username is already taken")
+                self.log_to_console(f"Connection rejected for {alias} from {addr} since the username is already taken")
                 send_acknowledgement(conn, NOK)
                 conn.close()
                 exit(1)
@@ -92,12 +93,13 @@ class Server:
 
                     self.connected_clients[alias] = conn
                     print(f"connected by: {addr} with username {alias}")
+                    self.log_to_console(f"Client connected by: {addr} with username {alias}")
                     send_acknowledgement(conn, OK)
 
         try:
             self.handle_command(alias, conn)
         except Exception as e:
-            print(f"Client disconnceted {e}")
+            self.log_to_console(f"{alias} disconnected!")
             self.connected_clients.pop(alias)
 
     def handle_command(self, alias, conn):
@@ -108,7 +110,7 @@ class Server:
             elif command == UPLOAD:
                 self.client_file_upload(alias, conn)
             elif command == LIST:
-                self.client_file_list(conn)
+                self.client_file_list(alias, conn)
             elif command == DELETE:
                 self.client_file_delete(alias, conn)
 
@@ -124,9 +126,11 @@ class Server:
             self.permanent_file_registry_save()
             send_command(conn, DELETE)
             send_acknowledgement(conn, OK)
+            self.log_to_console(f"{alias} deleted a file named {file_name.split('_')[1]}.")
 
         else:
             print("This is not the file owner")
+            self.log_to_console(f"{alias} tried to delete a file named {file_name.split('_')[1]} without permission!")
             send_command(conn, DELETE)
             send_acknowledgement(conn, NOK)
 
@@ -136,14 +140,14 @@ class Server:
         file_size = int(receive_package(conn))
         print(f"file size: {file_size}")
 
-
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((HOST, PORT+1))
+        s.bind((HOST, PORT + 1))
         s.listen()
 
-        print(f"Data transfer is running on: ({HOST}:{PORT+1})")
-        self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT+1})")
+        print(f"Data transfer is running on: ({HOST}:{PORT + 1})")
+        self.log_to_console(f"Data transfer socket opened: ({HOST}:{PORT + 1})")
+        self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT + 1})")
 
         send_command(conn, UPLOAD)
 
@@ -158,15 +162,16 @@ class Server:
                     break
                 f.write(data)
                 bytes_received += len(data)
-        
-        s.close()
 
+        s.close()
 
         with self.client_file_registry_lock:
             self.client_file_registry[alias].add(f"{alias}_{file_name}")
         self.permanent_file_registry_save()
 
         print(f"File successfully created")
+        self.log_to_console(f"{alias} created file named: {file_name}")
+        self.log_to_console(f"Data transfer socket closed: ({HOST}:{PORT + 1})")
 
     def print_history(self):
         with self.client_conn_history_lock:
@@ -177,11 +182,12 @@ class Server:
                 for addr, info in self.client_conn_history.items():
                     print(f"Client {addr} - Connected at: {info['time']}")
 
-    def client_file_list(self, conn):
+    def client_file_list(self, alias, conn):
         files_on_server = ""
+        self.log_to_console(f"{alias} retrieved file list from the server")
         with self.client_file_registry_lock:
             if not self.client_file_registry:
-                print("No files are uploaded to the server yet")
+                print("No files are uploaded to the server yet!")
             else:
                 print("Files Uploaded:")
                 for user, file in self.client_file_registry.items():
@@ -209,8 +215,9 @@ class Server:
                     file_name_len = len(str(file_name))
                     file_size_len = len(str(file_size))
 
-
-                    s.bind((HOST, PORT+1))
+                    s.bind((HOST, PORT + 1))
+                    self.log_to_console(f"Data transfer socket opened: ({HOST}:{PORT + 1})")
+                    self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT + 1})")
                     s.listen()
 
                     send_command(conn, DOWNLOAD)
@@ -240,8 +247,11 @@ class Server:
                             send_package(self.connected_clients[file_owner], downloader_name_len, str(alias))
                             send_package(self.connected_clients[file_owner], file_name_len, str(file_name))
 
+                    self.log_to_console(f"{alias} has downloaded {file_name.split('_')[1]}")
+                    self.log_to_console(f"Data transfer socket closed: ({HOST}:{PORT + 1})")
+
         except Exception as e:
-            print(f"error {e}")
+            self.log_to_console(f"Error on file download by client: {alias} => {e}")
 
     def permanent_file_registry_save(self):
         with self.permanent_file_registry_lock:
