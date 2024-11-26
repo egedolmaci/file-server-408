@@ -17,6 +17,9 @@ class Client:
         self.alias = None
         self.sock = None
         self.ui_update_callback = None
+        self.sock_data_transfer = None
+        self.file = None
+        self.file_size = 0
 
     def connect(self):
         try:
@@ -48,6 +51,8 @@ class Client:
             command = receive_command(self.sock)
             if command == DOWNLOAD:
                 self.handle_download_file_response()
+            elif command == UPLOAD:
+                self.handle_upload_file_response()
             elif command == LIST:
                 self.handle_get_file_list_response()
             elif command == DELETE:
@@ -89,26 +94,36 @@ class Client:
     def send_upload_file_request(self,file_path):
         send_command(self.sock, UPLOAD)
         try:
-            file, file_name, file_size, file_name_size = self.handle_upload_file_request(file_path)
+            file, file_name, file_size, file_name_size = self.file_util(file_path)
+            self.file = file
+            self.file_size = file_size
 
             send_package(self.sock, file_name_size, file_name)
 
             file_size_len = len(str(file_size))
             send_package(self.sock, file_size_len, str(file_size))
 
-            bytes_sent = 0
-            while bytes_sent < file_size:
-                data = file.read(4096)
-                if not data:
-                    break
-                self.sock.sendall(data)
-                bytes_sent += len(data)
         except Exception as e:
             print(f"exception {e}")
-
-    def handle_upload_file_request(self, file_path):
+    
+    def handle_upload_file_response(self):
         try:
+            self.sock_data_transfer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock_data_transfer.connect((self.host, self.port+1))
 
+            bytes_sent = 0
+            while bytes_sent < self.file_size:
+                data = self.file.read(4096)
+                if not data:
+                    break
+                self.sock_data_transfer.sendall(data)
+                bytes_sent += len(data)
+        except Exception as e:
+            print(e)
+
+
+    def file_util(self, file_path):
+        try:
             if not os.path.exists(file_path):
                 raise FileNotFoundError("File does not exist")
 

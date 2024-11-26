@@ -33,7 +33,7 @@ class Server:
 
         self.permanent_file_registry_lock = threading.Lock()
 
-        self.save_files_path = "./server-files"
+        self.save_files_path = "./server_files"
 
         self.log_to_console = None
 
@@ -136,14 +136,30 @@ class Server:
         file_size = int(receive_package(conn))
         print(f"file size: {file_size}")
 
-        with open(f"{self.save_files_path}/{alias}_{file_name}", "wb") as f:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((HOST, PORT+1))
+        s.listen()
+
+        print(f"Data transfer is running on: ({HOST}:{PORT+1})")
+        self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT+1})")
+
+        send_command(conn, UPLOAD)
+
+        conn_data_transfer, addr = s.accept()
+
+        filePath = os.path.join(self.save_files_path, f"{alias}_{file_name}")
+        with open(filePath, "wb") as f:
             bytes_received = 0
             while bytes_received < file_size:
-                data = conn.recv(4096)
+                data = conn_data_transfer.recv(4096)
                 if not data:
                     break
                 f.write(data)
                 bytes_received += len(data)
+        
+        s.close()
+
 
         with self.client_file_registry_lock:
             self.client_file_registry[alias].add(f"{alias}_{file_name}")
