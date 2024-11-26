@@ -33,7 +33,7 @@ class Server:
 
         self.permanent_file_registry_lock = threading.Lock()
 
-        self.save_files_path = "./files"
+        self.save_files_path = "./server-files"
 
         self.log_to_console = None
 
