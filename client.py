@@ -43,6 +43,8 @@ class ClientGUI(tk.Tk):
         self.connect_button = tk.Button(self, text="Connect", command=self.start_client)
         self.connect_button.grid(row=3, column=0, columnspan=3, pady=20)
 
+        self.resizable(width=False, height=False)
+
     def start_client(self):
 
         ip = self.ip_entry.get()
@@ -64,6 +66,7 @@ class ClientGUI(tk.Tk):
             messagebox.showwarning("Input Error", "Please fill in all fields.")
 
     def open_client_user_interface(self):
+        self.resizable(width=True, height=True)
         self.user_interface = tk.Toplevel(self)
         self.user_interface.title("File Server Client")
         self.user_interface.geometry("1400x600")  # Set the window size
@@ -97,6 +100,16 @@ class ClientGUI(tk.Tk):
 
         self.delete_button = tk.Button(button_frame, text="Delete", command=self.delete_file)
         self.delete_button.grid(row=0, column=3, padx=5)
+
+        # User Info
+        user_info_frame = tk.Frame(self.user_interface)
+        user_info_frame.grid(row=0, column=1, sticky="e", padx=10, pady=10)
+
+        user_name_label = tk.Label(user_info_frame, text=f"User Name: {self.client.alias}")
+        user_name_label.grid(row=0, column=0, pady=2, sticky="e")
+
+        server_info_label = tk.Label(user_info_frame, text=f"Server Address: {self.client.host}:{self.client.port}")
+        server_info_label.grid(row=1, column=0, pady=2, sticky="e")
 
         # Console Text Box
         self.console_text = tk.Text(self.user_interface, height=20, width=80)

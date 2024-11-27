@@ -36,6 +36,8 @@ class ServerGUI(tk.Tk):
         self.start_button = tk.Button(self, text="Start", command=self.start_server)
         self.start_button.grid(row=3, column=0, columnspan=3, pady=20)
 
+        self.resizable(width=False, height=False)
+
         self.server = Server()
 
     def start_server(self):
@@ -64,12 +66,17 @@ class ServerGUI(tk.Tk):
         sys.exit(0)
 
     def open_console_window(self):
+        self.resizable(width=True, height=True)
         console_window = tk.Toplevel(self)
         console_window.title("Server Console")
 
+        # Configure the grid in the Toplevel to allow resizing
+        console_window.rowconfigure(0, weight=1)
+        console_window.columnconfigure(0, weight=1)
+
         # Listbox to serve as the console log
         self.console_log = tk.Listbox(console_window, width=80, height=20)
-        self.console_log.grid(row=0, column=0, padx=10, pady=10)
+        self.console_log.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # Bind the close event to the function
         console_window.protocol("WM_DELETE_WINDOW", self.on_window_close)

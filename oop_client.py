@@ -66,7 +66,7 @@ class Client:
                 elif command == NOTIFY:
                     self.handle_notify_response()
             except Exception as e:
-                self.ui_update_callback("LOG", "Server connection lost!")
+                self.ui_update_callback("LOG", f"Server connection lost!")
                 self.ui_update_callback("ERROR", "CONNECTION_LOST")
                 break
 
@@ -189,7 +189,7 @@ class Client:
         file_name = receive_package(self.sock)
 
         print(f"\n{downloader_name} downloaded your file named {file_name}!")
-        self.ui_update_callback("LOG", f"\n{downloader_name} downloaded your file named {file_name.split('_'[1])}!")
+        self.ui_update_callback("LOG", f"{downloader_name} downloaded your file named {file_name.split('_')[1]}!")
 
     def permanent_file_registry_load(self, data):
         print(data)
