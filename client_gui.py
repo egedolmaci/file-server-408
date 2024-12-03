@@ -2,7 +2,7 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from oop_client import Client
+from client_backend import Client
 from parser import *
 
 
