@@ -5,6 +5,10 @@ from tkinter import filedialog, messagebox
 
 from oop_server import Server
 
+'''
+This file contains the GUI implementation of the server.
+'''
+
 
 class ServerGUI(tk.Tk):
     def __init__(self):
@@ -35,9 +39,9 @@ class ServerGUI(tk.Tk):
         # Connect Button
         self.start_button = tk.Button(self, text="Start", command=self.start_server)
         self.start_button.grid(row=3, column=0, columnspan=3, pady=20)
-
         self.resizable(width=False, height=False)
 
+        # Create server object
         self.server = Server()
 
     def start_server(self):
@@ -49,9 +53,13 @@ class ServerGUI(tk.Tk):
             messagebox.showinfo("Server", f"Starting server at {ip}:{port}\nDirectory: {directory}")
             self.withdraw()
             self.open_console_window()
+
+            # Set path, ip, port of the server
             self.server.save_files_path = directory
             self.server.host = self.ip_entry.get()
             self.server.port = int(self.port_entry.get())
+
+            # Start the server thread
             server_thread = threading.Thread(target=self.server.start, args=(), daemon=True)
             server_thread.start()
         else:
@@ -71,8 +79,6 @@ class ServerGUI(tk.Tk):
         self.resizable(width=True, height=True)
         console_window = tk.Toplevel(self)
         console_window.title("Server Console")
-
-        # Configure the grid in the Toplevel to allow resizing
         console_window.rowconfigure(0, weight=1)
         console_window.columnconfigure(0, weight=1)
 
@@ -87,7 +93,7 @@ class ServerGUI(tk.Tk):
             self.console_log.insert(tk.END, message)
             self.console_log.yview(tk.END)
 
-        # Example log messages to demonstrate
+        # Initial logs
         add_log_message("Server started...")
         add_log_message(f"Listening on IP {self.ip_entry.get()} and Port {self.port_entry.get()}")
         add_log_message("Ready to accept connections.")
