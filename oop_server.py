@@ -5,14 +5,6 @@ import time
 import os
 from parser import *
 
-'''
-The problems to be fixed:
-- We need to add a mechanism to close all the running threads, and dependent threads with a function to 
-call this on event user closes the server console window.
-
-'''
-
-
 class Server:
 
     def __init__(self):
