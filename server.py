@@ -50,6 +50,8 @@ class ServerGUI(tk.Tk):
             self.withdraw()
             self.open_console_window()
             self.server.save_files_path = directory
+            self.server.host = self.ip_entry.get()
+            self.server.port = int(self.port_entry.get())
             server_thread = threading.Thread(target=self.server.start, args=(), daemon=True)
             server_thread.start()
         else:

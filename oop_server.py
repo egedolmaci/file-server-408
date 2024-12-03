@@ -12,15 +12,12 @@ call this on event user closes the server console window.
 
 '''
 
-HOST = "127.0.0.1"
-PORT = 9876
-
 
 class Server:
 
     def __init__(self):
-        self.host = HOST
-        self.port = PORT
+        self.host = None
+        self.port = None
 
         self.client_conn_history = {}
         self.client_conn_history_lock = threading.Lock()
@@ -52,11 +49,11 @@ class Server:
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind((HOST, PORT))
+            s.bind((self.host, self.port))
             s.listen()
 
-            print(f"Server is running on: ({HOST}:{PORT})")
-            self.log_to_console(f"Server is running on: ({HOST}:{PORT})")
+            print(f"Server is running on: ({self.host}:{self.port})")
+            self.log_to_console(f"Server is running on: ({self.host}:{self.port})")
 
             while True:
                 conn, addr = s.accept()
@@ -142,12 +139,12 @@ class Server:
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((HOST, PORT + 1))
+        s.bind((self.host, self.port + 1))
         s.listen()
 
-        print(f"Data transfer is running on: ({HOST}:{PORT + 1})")
-        self.log_to_console(f"Data transfer socket opened: ({HOST}:{PORT + 1})")
-        self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT + 1})")
+        print(f"Data transfer is running on: ({self.host}:{self.port + 1})")
+        self.log_to_console(f"Data transfer socket opened: ({self.host}:{self.port + 1})")
+        self.log_to_console(f"Data transfer is running on: ({self.host}:{self.port + 1})")
 
         send_command(conn, UPLOAD)
 
@@ -171,7 +168,7 @@ class Server:
 
         print(f"File successfully created")
         self.log_to_console(f"{alias} created file named: {file_name}")
-        self.log_to_console(f"Data transfer socket closed: ({HOST}:{PORT + 1})")
+        self.log_to_console(f"Data transfer socket closed: ({self.host}:{self.port + 1})")
 
     def print_history(self):
         with self.client_conn_history_lock:
@@ -215,9 +212,8 @@ class Server:
                     file_name_len = len(str(file_name))
                     file_size_len = len(str(file_size))
 
-                    s.bind((HOST, PORT + 1))
-                    self.log_to_console(f"Data transfer socket opened: ({HOST}:{PORT + 1})")
-                    self.log_to_console(f"Data transfer is running on: ({HOST}:{PORT + 1})")
+                    s.bind((self.host, self.port + 1))
+                    self.log_to_console(f"Data transfer is running on: ({self.host}:{self.port + 1})")
                     s.listen()
 
                     send_command(conn, DOWNLOAD)
@@ -248,7 +244,7 @@ class Server:
                             send_package(self.connected_clients[file_owner], file_name_len, str(file_name))
 
                     self.log_to_console(f"{alias} has downloaded {file_name.split('_')[1]}")
-                    self.log_to_console(f"Data transfer socket closed: ({HOST}:{PORT + 1})")
+                    self.log_to_console(f"Data transfer socket closed: ({self.host}:{self.port + 1})")
 
         except Exception as e:
             self.log_to_console(f"Error on file download by client: {alias} => {e}")

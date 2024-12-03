@@ -58,6 +58,8 @@ class ClientGUI(tk.Tk):
             messagebox.showinfo("Server", f"Connecting to {ip}:{port}\nWith name: {user_name}")
             self.withdraw()  # Hide the current window
             self.client.alias = user_name
+            self.client.host = self.ip_entry.get()
+            self.client.port = int(self.port_entry.get())
             server_thread = threading.Thread(target=self.client.connect, args=(), daemon=True)
             server_thread.start()
             self.client.open_client_user_interface = self.open_client_user_interface

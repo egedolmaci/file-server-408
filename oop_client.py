@@ -5,15 +5,12 @@ import sys
 import threading
 from parser import *
 
-HOST = "127.0.0.1"
-PORT = 9876
-
 
 class Client:
 
     def __init__(self):
-        self.host = HOST
-        self.port = PORT
+        self.host = None
+        self.port = None
         self.alias = None
         self.sock = None
         self.ui_update_callback = None
