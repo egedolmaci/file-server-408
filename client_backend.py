@@ -5,6 +5,9 @@ import sys
 import threading
 from parser import *
 
+'''Throughout the code data transfer is done through a convention which is sending 
+the packet size before sending the meaningfuldata. Initial data sent for packet size
+ is always 4 bytes in big endian. This functionality is implemented in the parser.py file and imported here'''
 
 class Client:
 
@@ -19,14 +22,15 @@ class Client:
         self.file_size = 0
         self.open_client_user_interface = None
 
+    
     def connect(self):
         try:
+            # Initialize socket and connect to the server
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.connect((self.host, self.port))
 
             self.sock.send(self.alias.encode())
-
             response = receive_acknowledgement(self.sock)
 
             if response == NOK:
@@ -48,6 +52,12 @@ class Client:
             print(f"Error: {e}")
             self.ui_update_callback("ERROR", "CONNECTION_ERROR")
 
+    '''This function listens to the server all the time. This listening process is done through the first socket which
+    is only for command handling.'''
+
+    '''After request function is called and server is informed this function captures a response from server and the 
+    necessary actions for command starts after this point. This request-response is basically a handshake before every command
+    to ensure both client and server is ready.'''
     def listen_server(self):
         while True:
             try:
@@ -67,6 +77,8 @@ class Client:
                 self.ui_update_callback("ERROR", "CONNECTION_LOST")
                 break
 
+    ''' According to the command given by client, client calls the regarding request function, each request
+      function informs the server about the action client wants to do.'''
     def handle_command(self, command, data):
         if command == DOWNLOAD:
             self.send_download_file_request(data)
@@ -115,6 +127,8 @@ class Client:
     
     def handle_upload_file_response(self):
         try:
+            ''' Second socket for data transfer is initialized and used to connect to the server. After 
+            data transfer is over it is closed.'''
             self.sock_data_transfer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock_data_transfer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
             self.sock_data_transfer.connect((self.host, self.port+1))
@@ -132,7 +146,8 @@ class Client:
             self.sock_data_transfer.close()
             self.send_get_file_list_request()
 
-
+    ''' This function is only called when client wants to upload a file. send_upload_file_request calls this function.
+    Necessary file actions are done before uploading the file'''
     def file_util(self, file_path):
         try:
             if not os.path.exists(file_path):
@@ -159,7 +174,7 @@ class Client:
         send_package(self.sock, file_name_size, file_name)
 
     def handle_download_file_response(self):
-
+        '''Second socket for file transfer is opened and connected'''
         self.sock_data_transfer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock_data_transfer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
         self.sock_data_transfer.connect((self.host, self.port+1))
@@ -180,6 +195,9 @@ class Client:
         print(f"file completely downloaded")
         self.sock_data_transfer.close()
 
+
+    '''For response there is no request but only handling response. Since sending the notification request comes
+    from the server unlike other commands'''
     def handle_notify_response(self):
 
         downloader_name = receive_package(self.sock)
@@ -188,6 +206,8 @@ class Client:
         print(f"\n{downloader_name} downloaded your file named {file_name}!")
         self.ui_update_callback("LOG", f"{downloader_name} downloaded your file named {file_name.split('_')[1]}!")
 
+    '''This function is for when server shutdowns and reinstantiated it starts from state when it was shutdown.
+    It reads the permanent-file-registry txt file and populates it inner map structure from it.'''
     def permanent_file_registry_load(self, data):
         print(data)
         try:
