@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from oop_server import Server
+from server_backend import Server
 
 '''
 This file contains the GUI implementation of the server.
